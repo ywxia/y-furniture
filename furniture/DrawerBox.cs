@@ -6,6 +6,7 @@ using Autodesk.AutoCAD.Runtime;
 using Autodesk.AutoCAD.BoundaryRepresentation;
 using System;
 using System.Windows.Input;
+using System.Collections.Generic;
 
 namespace furniture
 {
@@ -110,23 +111,39 @@ namespace furniture
 
         private static void ApplyTopFillet(Solid3d solid, double height, double radius)
         {
-            Brep brep = new Brep(solid);
-            var edges = new IntPtrCollection();
-            var radii = new DoubleCollection();
-            foreach (Edge edge in brep.Edges)
+            // Fully qualify Brep
+            Autodesk.AutoCAD.BoundaryRepresentation.Brep brep = new Autodesk.AutoCAD.BoundaryRepresentation.Brep(solid);
+            List<SubentityId> edgeIdList = new List<SubentityId>();
+
+            // Fully qualify Edge in the foreach loop
+            foreach (Autodesk.AutoCAD.BoundaryRepresentation.Edge edge in brep.Edges)
             {
+                if (edge.Vertex1 == null || edge.Vertex2 == null) continue; 
+
                 Point3d start = edge.Vertex1.Point;
                 Point3d end = edge.Vertex2.Point;
+
                 if (Math.Abs(start.Z - height) < Tolerance.Global.EqualPoint &&
                     Math.Abs(end.Z - height) < Tolerance.Global.EqualPoint)
                 {
-                    edges.Add(edge.SubentityId.Handle);
-                    radii.Add(radius);
+                    edgeIdList.Add(edge.SubentityId); 
                 }
             }
-            if (edges.Count > 0)
+
+            if (edgeIdList.Count > 0)
             {
-                solid.FilletEdges(edges, radii);
+                DoubleCollection baseRadiiColl = new DoubleCollection();
+                DoubleCollection endRadiiColl = new DoubleCollection();
+                DoubleCollection endSetbackColl = new DoubleCollection();
+
+                for (int i = 0; i < edgeIdList.Count; i++)
+                {
+                    baseRadiiColl.Add(radius);
+                    endRadiiColl.Add(radius);
+                    endSetbackColl.Add(0.0); 
+                }
+
+                solid.FilletEdges(edgeIdList.ToArray(), baseRadiiColl, endRadiiColl, endSetbackColl);
             }
         }
     }

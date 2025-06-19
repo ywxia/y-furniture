@@ -19,6 +19,10 @@
       <HintPath>D:\autodesk\AutoCAD 2018\accoremgd.dll</HintPath>
       <Private>False</Private>
     </Reference>
+    <Reference Include="AcDbMgdBrep">
+      <HintPath>D:\autodesk\AutoCAD 2018\AcDbMgdBrep.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
     <Reference Include="AdWindows">
       <HintPath>D:\autodesk\AutoCAD 2018\AdWindows.dll</HintPath>
       <Private>False</Private>
