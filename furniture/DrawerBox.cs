@@ -126,7 +126,8 @@ namespace furniture
                 if (Math.Abs(start.Z - height) < Tolerance.Global.EqualPoint &&
                     Math.Abs(end.Z - height) < Tolerance.Global.EqualPoint)
                 {
-                    edgeIdList.Add(edge.SubentityId); 
+                    // use the edge's full subentity path to obtain its ID
+                    edgeIdList.Add(edge.SubentityPath.SubentId);
                 }
             }
 
