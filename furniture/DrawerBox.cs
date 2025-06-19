@@ -3,6 +3,7 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
+using Autodesk.AutoCAD.BoundaryRepresentation;
 using System;
 using System.Windows.Input;
 
@@ -18,9 +19,9 @@ namespace furniture
             Editor ed = doc.Editor;
 
             // 确保在模型空间中操作
-            if (Convert.ToInt16(Application.GetSystemVariable("TILEMODE")) == 1)
+            if (Convert.ToInt16(Application.GetSystemVariable("TILEMODE")) == 0)
             {
-                Application.SetSystemVariable("TILEMODE", 0);
+                Application.SetSystemVariable("TILEMODE", 1);
             }
 
             using (doc.LockDocument())
@@ -55,24 +56,28 @@ namespace furniture
                         Solid3d box1 = new Solid3d();
                         box1.SetDatabaseDefaults();
                         box1.CreateBox(thickness, length, height);
+                        ApplyTopFillet(box1, height, thickness / 2.0);
 
                         // Box 2: 右侧板
                         Solid3d box2 = new Solid3d();
                         box2.SetDatabaseDefaults();
                         box2.CreateBox(thickness, length, height);
                         box2.TransformBy(Matrix3d.Displacement(new Vector3d(width - thickness, 0, 0)));
+                        ApplyTopFillet(box2, height, thickness / 2.0);
 
                         // Box 3: 前板
                         Solid3d box3 = new Solid3d();
                         box3.SetDatabaseDefaults();
                         box3.CreateBox(width - 2 * thickness, thickness, height);
                         box3.TransformBy(Matrix3d.Displacement(new Vector3d(thickness, 0, 0)));
+                        ApplyTopFillet(box3, height, thickness / 2.0);
 
                         // Box 4: 后板
                         Solid3d box4 = new Solid3d();
                         box4.SetDatabaseDefaults();
                         box4.CreateBox(width - 2 * thickness, thickness, height);
                         box4.TransformBy(Matrix3d.Displacement(new Vector3d(thickness, length - thickness, 0)));
+                        ApplyTopFillet(box4, height, thickness / 2.0);
 
                         // Box 5: 底板
                         Solid3d box5 = new Solid3d();
@@ -100,6 +105,28 @@ namespace furniture
                         tr.Abort();
                     }
                 }
+            }
+        }
+
+        private static void ApplyTopFillet(Solid3d solid, double height, double radius)
+        {
+            Brep brep = new Brep(solid);
+            var edges = new IntPtrCollection();
+            var radii = new DoubleCollection();
+            foreach (Edge edge in brep.Edges)
+            {
+                Point3d start = edge.Vertex1.Point;
+                Point3d end = edge.Vertex2.Point;
+                if (Math.Abs(start.Z - height) < Tolerance.Global.EqualPoint &&
+                    Math.Abs(end.Z - height) < Tolerance.Global.EqualPoint)
+                {
+                    edges.Add(edge.SubentityId.Handle);
+                    radii.Add(radius);
+                }
+            }
+            if (edges.Count > 0)
+            {
+                solid.FilletEdges(edges, radii);
             }
         }
     }
