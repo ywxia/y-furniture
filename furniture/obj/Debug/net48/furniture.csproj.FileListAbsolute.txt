@@ -1,0 +1,9 @@
+D:\BaiduSyncdisk\软件\y-furniture\furniture\obj\Debug\net48\furniture.csproj.AssemblyReference.cache
+D:\BaiduSyncdisk\软件\y-furniture\furniture\obj\Debug\net48\furniture.GeneratedMSBuildEditorConfig.editorconfig
+D:\BaiduSyncdisk\软件\y-furniture\furniture\obj\Debug\net48\furniture.csproj.CoreCompileInputs.cache
+D:\BaiduSyncdisk\软件\y-furniture\furniture\bin\Debug\net48\furniture.pdb
+D:\BaiduSyncdisk\软件\y-furniture\furniture\obj\Debug\net48\furniture.pdb
+D:\BaiduSyncdisk\软件\y-furniture\furniture\obj\Debug\net48\furniture.AssemblyInfoInputs.cache
+D:\BaiduSyncdisk\软件\y-furniture\furniture\obj\Debug\net48\furniture.AssemblyInfo.cs
+D:\BaiduSyncdisk\软件\y-furniture\furniture\bin\Debug\net48\furniture.dll
+D:\BaiduSyncdisk\软件\y-furniture\furniture\obj\Debug\net48\furniture.dll
