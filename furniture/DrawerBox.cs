@@ -3,10 +3,8 @@ using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
-using Autodesk.AutoCAD.BoundaryRepresentation;
 using System;
 using System.Windows.Input;
-using System.Collections.Generic;
 
 namespace furniture
 {
@@ -32,10 +30,6 @@ namespace furniture
                 if (lengthResult.Status != PromptStatus.OK) return;
                 double length = lengthResult.Value;
 
-                PromptDoubleResult widthResult = ed.GetDouble("\n请输入宽度 (width): ");
-                if (widthResult.Status != PromptStatus.OK) return;
-                double width = widthResult.Value;
-
                 PromptDoubleResult heightResult = ed.GetDouble("\n请输入高度 (height): ");
                 if (heightResult.Status != PromptStatus.OK) return;
                 double height = heightResult.Value;
@@ -45,60 +39,61 @@ namespace furniture
                 if (thicknessResult.Status != PromptStatus.OK) return;
                 double thickness = thicknessResult.Value;
 
+                // 圆角半径直接设为1
+                double radius = 1.0;
+
+                // 板高减去板厚/2
+                height = height - thickness / 2.0;
+
                 Database db = doc.Database;
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
+                    BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
+                    BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
+
                     try
                     {
-                        BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
-                        BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
+                        // 创建轮廓线（在XY平面）
+                        Polyline pline = new Polyline();
+                        pline.SetDatabaseDefaults();
+                        pline.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0);                     // 左下角
+                        pline.AddVertexAt(1, new Point2d(0, height), -1, 0, 0);               // 左上角到右上角的半圆弧，bulge为-1向外凸
+                        pline.AddVertexAt(2, new Point2d(thickness, height), 0, 0, 0);        // 右上角
+                        pline.AddVertexAt(3, new Point2d(thickness, 0), 0, 0, 0);             // 右下角
+                        pline.Closed = true;
 
-                        // Box 1: 左侧板, 原点(0,0,0)
-                        Solid3d box1 = new Solid3d();
-                        box1.SetDatabaseDefaults();
-                        box1.CreateBox(thickness, length, height);
-                        ApplyTopFillet(box1, height, thickness / 2.0);
+                        btr.AppendEntity(pline);
+                        tr.AddNewlyCreatedDBObject(pline, true);
 
-                        // Box 2: 右侧板
-                        Solid3d box2 = new Solid3d();
-                        box2.SetDatabaseDefaults();
-                        box2.CreateBox(thickness, length, height);
-                        box2.TransformBy(Matrix3d.Displacement(new Vector3d(width - thickness, 0, 0)));
-                        ApplyTopFillet(box2, height, thickness / 2.0);
-
-                        // Box 3: 前板
-                        Solid3d box3 = new Solid3d();
-                        box3.SetDatabaseDefaults();
-                        box3.CreateBox(width - 2 * thickness, thickness, height);
-                        box3.TransformBy(Matrix3d.Displacement(new Vector3d(thickness, 0, 0)));
-                        ApplyTopFillet(box3, height, thickness / 2.0);
-
-                        // Box 4: 后板
-                        Solid3d box4 = new Solid3d();
-                        box4.SetDatabaseDefaults();
-                        box4.CreateBox(width - 2 * thickness, thickness, height);
-                        box4.TransformBy(Matrix3d.Displacement(new Vector3d(thickness, length - thickness, 0)));
-                        ApplyTopFillet(box4, height, thickness / 2.0);
-
-                        // Box 5: 底板
-                        Solid3d box5 = new Solid3d();
-                        box5.SetDatabaseDefaults();
-                        box5.CreateBox(width - 2 * thickness, length, thickness);
-                        box5.TransformBy(Matrix3d.Displacement(new Vector3d(thickness, 0, 0)));
-
-                        btr.AppendEntity(box1);
-                        tr.AddNewlyCreatedDBObject(box1, true);
-                        btr.AppendEntity(box2);
-                        tr.AddNewlyCreatedDBObject(box2, true);
-                        btr.AppendEntity(box3);
-                        tr.AddNewlyCreatedDBObject(box3, true);
-                        btr.AppendEntity(box4);
-                        tr.AddNewlyCreatedDBObject(box4, true);
-                        btr.AppendEntity(box5);
-                        tr.AddNewlyCreatedDBObject(box5, true);
+                        // 创建面域
+                        DBObjectCollection curves = new DBObjectCollection();
+                        curves.Add(pline);
+                        DBObjectCollection regions = Region.CreateFromCurves(curves);
+                        
+                        if (regions.Count > 0)
+                        {
+                            Region region = regions[0] as Region;
+                            // 拉伸面域创建实体（沿Y轴方向拉伸）
+                            Solid3d solid = new Solid3d();
+                            solid.SetDatabaseDefaults();
+                            solid.Extrude(region, length, 0.0);
+                            // 旋转到ZX平面（绕X轴+90°）
+                            Matrix3d toZX = Matrix3d.Rotation(Math.PI/2, Vector3d.XAxis, Point3d.Origin);
+                            solid.TransformBy(toZX);
+                            // 添加实体到图形中
+                            btr.AppendEntity(solid);
+                            tr.AddNewlyCreatedDBObject(solid, true);
+                            // 删除用于生成的多段线
+                            pline.Erase();
+                            region.Dispose();
+                        }
+                        else
+                        {
+                            ed.WriteMessage("\n无法从多段线创建面域");
+                        }
 
                         tr.Commit();
-                        ed.WriteMessage("\n抽屉框创建成功。");
+                        ed.WriteMessage("\n左侧板创建成功。");
                     }
                     catch (System.Exception ex)
                     {
@@ -106,45 +101,6 @@ namespace furniture
                         tr.Abort();
                     }
                 }
-            }
-        }
-
-        private static void ApplyTopFillet(Solid3d solid, double height, double radius)
-        {
-            // Fully qualify Brep
-            Autodesk.AutoCAD.BoundaryRepresentation.Brep brep = new Autodesk.AutoCAD.BoundaryRepresentation.Brep(solid);
-            List<SubentityId> edgeIdList = new List<SubentityId>();
-
-            // Fully qualify Edge in the foreach loop
-            foreach (Autodesk.AutoCAD.BoundaryRepresentation.Edge edge in brep.Edges)
-            {
-                if (edge.Vertex1 == null || edge.Vertex2 == null) continue; 
-
-                Point3d start = edge.Vertex1.Point;
-                Point3d end = edge.Vertex2.Point;
-
-                if (Math.Abs(start.Z - height) < Tolerance.Global.EqualPoint &&
-                    Math.Abs(end.Z - height) < Tolerance.Global.EqualPoint)
-                {
-                    // use the edge's full subentity path to obtain its ID
-                    edgeIdList.Add(edge.SubentityPath.SubentId);
-                }
-            }
-
-            if (edgeIdList.Count > 0)
-            {
-                DoubleCollection baseRadiiColl = new DoubleCollection();
-                DoubleCollection endRadiiColl = new DoubleCollection();
-                DoubleCollection endSetbackColl = new DoubleCollection();
-
-                for (int i = 0; i < edgeIdList.Count; i++)
-                {
-                    baseRadiiColl.Add(radius);
-                    endRadiiColl.Add(radius);
-                    endSetbackColl.Add(0.0); 
-                }
-
-                solid.FilletEdges(edgeIdList.ToArray(), baseRadiiColl, endRadiiColl, endSetbackColl);
             }
         }
     }
@@ -165,7 +121,10 @@ namespace furniture
                 Document doc = Application.DocumentManager.MdiActiveDocument;
                 if (doc != null)
                 {
-                    doc.SendStringToExecute("_CreateDrawerBox ", true, false, true);
+                    using (doc.LockDocument())
+                    {
+                        doc.SendStringToExecute("_CreateDrawerBox ", true, false, true);
+                    }
                 }
             }
             catch (System.Exception ex)
