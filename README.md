@@ -62,6 +62,18 @@
 - 自动绘制 4 条水平方向直线，自动排列。
 - 所有图元均自动排列、镜像，确保与加工图纸一致。
 
+### 串带门板绘制要点
+
+- **参数化输入**：通过弹出的 `DoorInputForm` 对话框，用户可自定义门板长度、宽度、串带边距、串带下边距和串带长度。对话框支持使用“上/下箭头”键切换焦点。
+- **主体绘制**：根据输入参数，首先在原点(0,0,0)绘制门板的矩形外框。
+- **串带阵列**：
+  - 自动计算串带的排列数量和间距，以确保间距在 `[300, 500]` 的合理范围内。
+  - 沿X轴方向，等距离排列多组“串带”（每组由一条直线和一条U型多段线构成）。
+  - 对排列距离小于300mm的特殊情况做了处理，保证至少在两端绘制串带。
+- **水平线排列**：
+  - 在门板内部，沿Y轴方向均匀排列4条水平直线。
+  - 直线的水平范围由串带边距和固定值（60mm）共同决定。
+
 ### 注意事项
 
 - bulge 参数需精确，圆角顺序与 AutoCAD 多段线方向一致。
@@ -72,8 +84,9 @@
 
 ### 关键代码位置
 
-- `DrawingUtils.cs`：主建模与绘图逻辑（如 DrawTable306 方法及辅助函数）。
-- `DrawingsPaletteControl.cs`：Palette UI 与型号按钮。
+- `DrawingUtils.cs`：主建模与绘图逻辑（如 `DrawTable306`、`DrawDoorWithGroove` 方法及辅助函数）。
+- `DrawingsPaletteControl.cs`：Palette UI 与型号按钮（如“串带门板绘制”按钮的事件处理）。
+- `DoorInputForm.cs`：串带门板的参数输入对话框。
 - `DrawingsPaletteCommandHandler.cs`：Palette 命令处理。
 - `RibbonController.cs`：功能区与按钮注册。
 
@@ -127,4 +140,3 @@ solid.TransformBy(Matrix3d.Rotation(Math.PI/2, Vector3d.XAxis, Point3d.Origin));
 ---
 
 如需补充其它重要事项，可继续补充“注意事项”或“建议”部分，保持结构清晰、重点突出。这样便于新成员快速理解项目结构和开发要点。
-

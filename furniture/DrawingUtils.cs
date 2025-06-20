@@ -544,8 +544,115 @@ namespace furniture
                 btr.AppendEntity(c1);
                 btr.AppendEntity(c2);
                 c1.Database.TransactionManager.TopTransaction.AddNewlyCreatedDBObject(c1, true);
-                c2.Database.TransactionManager.TopTransaction.AddNewlyCreatedDBObject(c2, true);
+                    c2.Database.TransactionManager.TopTransaction.AddNewlyCreatedDBObject(c2, true);
             }
+        }
+
+        public static void DrawDoorWithGroove(double length, double width, double sideMargin, double grooveBottom, double grooveLength)
+        {
+            Document doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+
+            Database db = doc.Database;
+            Editor ed = doc.Editor;
+
+            using (doc.LockDocument())
+            using (Transaction tr = db.TransactionManager.StartTransaction())
+            {
+                BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
+                BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
+
+                // 绘制门板外框
+                Point2d pt1 = new Point2d(0, 0);
+                Point2d pt2 = new Point2d(length, 0);
+                Point2d pt3 = new Point2d(length, width);
+                Point2d pt4 = new Point2d(0, width);
+
+                Polyline pl = new Polyline();
+                pl.AddVertexAt(0, pt1, 0, 0, 0);
+                pl.AddVertexAt(1, pt2, 0, 0, 0);
+                pl.AddVertexAt(2, pt3, 0, 0, 0);
+                pl.AddVertexAt(3, pt4, 0, 0, 0);
+                pl.Closed = true;
+
+                btr.AppendEntity(pl);
+                tr.AddNewlyCreatedDBObject(pl, true);
+
+                // 计算排列参数
+                double totalDistance = length - (sideMargin * 2);
+                int groupCount;
+
+                // 如果总排列距离小于最小间距要求，则只在两端各放一组
+                if (totalDistance < 300)
+                {
+                    groupCount = 2;
+                }
+                // 如果总排列距离在[300, 500]之间，也只放两组
+                else if (totalDistance <= 500)
+                {
+                    groupCount = 2;
+                }
+                else
+                {
+                    double minSpacing = 300;
+                    double maxSpacing = 500;
+                    int minGroups = (int)Math.Ceiling(totalDistance / maxSpacing) + 1;
+                    int maxGroups = (int)Math.Floor(totalDistance / minSpacing) + 1;
+                    groupCount = (int)Math.Round((double)(minGroups + maxGroups) / 2.0);
+                }
+
+                if (groupCount < 2) groupCount = 2;
+                
+                double spacing = totalDistance / (groupCount - 1);
+
+                // 循环绘制串带
+                for (int i = 0; i < groupCount; i++)
+                {
+                    double currentX = sideMargin + i * spacing;
+                    DrawGrooveSet(btr, tr, new Point3d(currentX, grooveBottom, 0), grooveLength);
+                }
+
+                // 绘制4条水平线
+                double lineSpacingY = width / 5.0;
+                double lineStartX = sideMargin + 60;
+                double lineEndX = length - sideMargin - 60;
+
+                for (int i = 1; i <= 4; i++)
+                {
+                    double currentY = i * lineSpacingY;
+                    Point3d startPt = new Point3d(lineStartX, currentY, 0);
+                    Point3d endPt = new Point3d(lineEndX, currentY, 0);
+                    Line horizontalLine = new Line(startPt, endPt);
+                    btr.AppendEntity(horizontalLine);
+                    tr.AddNewlyCreatedDBObject(horizontalLine, true);
+                }
+
+                tr.Commit();
+
+                ed.WriteMessage($"\n已绘制一个 {length}x{width} 的门板，并添加了 {groupCount} 组串带和4条水平线。");
+            }
+        }
+
+        private static void DrawGrooveSet(BlockTableRecord btr, Transaction tr, Point3d startPoint, double grooveLength)
+        {
+            double grooveBottom = startPoint.Y;
+            double sideMargin = startPoint.X;
+
+            // 1. 画直线
+            Point3d lineStart = new Point3d(sideMargin, grooveBottom, 0);
+            Point3d lineEnd = new Point3d(sideMargin, grooveBottom + grooveLength, 0);
+            Line line = new Line(lineStart, lineEnd);
+            btr.AppendEntity(line);
+            tr.AddNewlyCreatedDBObject(line, true);
+
+            // 2. 画多段线
+            Polyline pLine2 = new Polyline();
+            pLine2.AddVertexAt(0, new Point2d(sideMargin - 0.05, grooveBottom + grooveLength), 0, 0, 0);
+            pLine2.AddVertexAt(1, new Point2d(sideMargin - 0.05, grooveBottom), 0, 0, 0);
+            pLine2.AddVertexAt(2, new Point2d(sideMargin + 0.05, grooveBottom), 0, 0, 0);
+            pLine2.AddVertexAt(3, new Point2d(sideMargin + 0.05, grooveBottom + grooveLength), 0, 0, 0);
+            btr.AppendEntity(pLine2);
+            tr.AddNewlyCreatedDBObject(pLine2, true);
         }
     }
 }
