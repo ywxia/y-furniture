@@ -468,6 +468,46 @@ namespace furniture
                         AddDoubleCircle(btr, pt, 9.5 / 2, 12 / 2);
                     tr3.Commit();
                 }
+                // 画三组同心圆并y轴镜像（中间组y=(1+width)/2，其余±260）
+                using (Transaction tr4 = db.TransactionManager.StartTransaction())
+                {
+                    BlockTable bt = tr4.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
+                    BlockTableRecord btr = tr4.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
+                    double xL = 1 + 435;
+                    double xR = 1 + length - 435;
+                    double yCenter = 1 + width / 2.0;
+                    double[] ys = new double[] { yCenter - 260, yCenter, yCenter + 260 };
+                    foreach (var y in ys)
+                    {
+                        // 左侧
+                        AddDoubleCircle(btr, new Point3d(xL, y, 0), 9.5 / 2, 12 / 2);
+                        // 右侧镜像
+                        AddDoubleCircle(btr, new Point3d(xR, y, 0), 9.5 / 2, 12 / 2);
+                    }
+                    tr4.Commit();
+                }
+                // 画水平方向多条直线（4条，间距150）
+                using (Transaction tr5 = db.TransactionManager.StartTransaction())
+                {
+                    BlockTable bt = tr5.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
+                    BlockTableRecord btr = tr5.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
+                    double startX = 236;
+                    double baseY = 1 + width / 2.0 - 225;
+                    double lineLen = length - 470;
+                    int lineCount = 4;
+                    double gap = 150;
+                    for (int i = 0; i < lineCount; i++)
+                    {
+                        double y = baseY + i * gap;
+                        var line = new Autodesk.AutoCAD.DatabaseServices.Line(
+                            new Point3d(startX, y, 0),
+                            new Point3d(startX + lineLen, y, 0)
+                        );
+                        btr.AppendEntity(line);
+                        tr5.AddNewlyCreatedDBObject(line, true);
+                    }
+                    tr5.Commit();
+                }
             }
         }
         // 计算偏移点
