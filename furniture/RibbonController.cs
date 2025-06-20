@@ -25,6 +25,7 @@ namespace furniture
 
             CreateGeneralPartsPanel(tab);
             CreateFurniturePartsPanel(tab);
+            CreateCNCPanel(tab); // 新增三轴加工面板
         }
 
         private static void CreateFurniturePartsPanel(RibbonTab tab)
@@ -67,6 +68,23 @@ namespace furniture
             boxButton.Text = "画制长方体";
             boxButton.CommandHandler = new DrawBoxCommandHandler();
             panelSource.Items.Add(boxButton);
+        }
+
+        // 新增三轴加工功能区和按钮
+        private static void CreateCNCPanel(RibbonTab tab)
+        {
+            RibbonPanelSource panelSource = new RibbonPanelSource();
+            panelSource.Title = "三轴加工";
+            RibbonPanel panel = new RibbonPanel();
+            panel.Source = panelSource;
+            tab.Panels.Add(panel);
+
+            RibbonButton button = new RibbonButton();
+            button.Name = "绘制图纸";
+            button.ShowText = true;
+            button.Text = "绘制图纸";
+            button.CommandHandler = new DrawingsPaletteCommandHandler();
+            panelSource.Items.Add(button);
         }
     }
 
