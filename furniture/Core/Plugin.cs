@@ -1,10 +1,11 @@
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Runtime;
 using System;
+using yz.furniture.Core;
 
-[assembly: ExtensionApplication(typeof(furniture.Plugin))]
+[assembly: ExtensionApplication(typeof(yz.furniture.Core.Plugin))]
 
-namespace furniture
+namespace yz.furniture.Core
 {
     public class Plugin : IExtensionApplication
     {

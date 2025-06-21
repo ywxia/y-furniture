@@ -6,11 +6,10 @@ using Autodesk.AutoCAD.Runtime;
 using System;
 using System.Windows.Input;
 
-namespace furniture
+namespace yz.furniture.Features
 {
     public class DrawerBox
     {
-        [CommandMethod("_CreateDrawerBox")]
         public static void CreateDrawerBox()
         {
             Document doc = Application.DocumentManager.MdiActiveDocument;
@@ -101,35 +100,6 @@ namespace furniture
                         tr.Abort();
                     }
                 }
-            }
-        }
-    }
-
-    public class CreateDrawerBoxCommandHandler : ICommand
-    {
-        public bool CanExecute(object parameter)
-        {
-            return true;
-        }
-
-        public event EventHandler CanExecuteChanged;
-
-        public void Execute(object parameter)
-        {
-            try
-            {
-                Document doc = Application.DocumentManager.MdiActiveDocument;
-                if (doc != null)
-                {
-                    using (doc.LockDocument())
-                    {
-                        doc.SendStringToExecute("_CreateDrawerBox ", true, false, true);
-                    }
-                }
-            }
-            catch (System.Exception ex)
-            {
-                Application.ShowAlertDialog($"命令执行出错：{ex.Message}");
             }
         }
     }

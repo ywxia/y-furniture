@@ -2,8 +2,9 @@ using Autodesk.Windows;
 using System;
 using System.Windows.Input;
 using Autodesk.AutoCAD.ApplicationServices;
+using yz.furniture.Commands;
 
-namespace furniture
+namespace yz.furniture.Core
 {
     public class RibbonController
     {
@@ -37,10 +38,11 @@ namespace furniture
             tab.Panels.Add(panel);
 
             RibbonButton button = new RibbonButton();
-            button.Name = "抽屉框制作";
+            button.Name = "部件制作";
             button.ShowText = true;
-            button.Text = "抽屉框制作";
-            button.CommandHandler = new CreateDrawerBoxCommandHandler();
+            button.Text = "部件制作";
+            button.CommandParameter = "ShowComponentsPalette";
+            button.CommandHandler = new ComponentsPaletteCommandHandler();
 
             panelSource.Items.Add(button);
         }
@@ -85,65 +87,6 @@ namespace furniture
             button.Text = "绘制图纸";
             button.CommandHandler = new DrawingsPaletteCommandHandler();
             panelSource.Items.Add(button);
-        }
-    }
-
-    // 为“画制矩形”按钮创建的特定命令处理器
-    public class DrawRectangleCommandHandler : ICommand
-    {
-        public bool CanExecute(object parameter)
-        {
-            return true;
-        }
-
-        public event EventHandler CanExecuteChanged;
-
-        public void Execute(object parameter)
-        {
-            try
-            {
-                Document doc = Application.DocumentManager.MdiActiveDocument;
-                if (doc != null)
-                {
-                    using (doc.LockDocument())
-                    {
-                        doc.SendStringToExecute("_DrawRectangle ", true, false, true);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Application.ShowAlertDialog($"执行命令出错：{ex.Message}");
-            }
-        }
-    }
-
-    public class DrawBoxCommandHandler : ICommand
-    {
-        public bool CanExecute(object parameter)
-        {
-            return true;
-        }
-
-        public event EventHandler CanExecuteChanged;
-
-        public void Execute(object parameter)
-        {
-            try
-            {
-                Document doc = Application.DocumentManager.MdiActiveDocument;
-                if (doc != null)
-                {
-                    using (doc.LockDocument())
-                    {
-                        doc.SendStringToExecute("_DrawBox ", true, false, true);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Application.ShowAlertDialog($"执行命令出错：{ex.Message}");
-            }
         }
     }
 }

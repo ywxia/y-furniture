@@ -4,28 +4,80 @@
 
 ## 目录
 
-1. 编译与加载
-2. 三轴加工功能
-   - 主要逻辑
-   - 相关代码文件
-   - 306型餐桌绘制要点
-   - 注意事项
-   - 关键代码位置
-3. 抽屉左侧板自动建模
-   - 主要流程
-   - 注意事项
-   - 代码片段参考
-   - 建议
-4. 交互体验建议
+- [y-furniture 插件说明](#y-furniture-插件说明)
+  - [目录](#目录)
+  - [项目结构](#项目结构)
+  - [环境与依赖](#环境与依赖)
+  - [编译与加载](#编译与加载)
+  - [1. 三轴加工功能](#1-三轴加工功能)
+    - [主要逻辑](#主要逻辑)
+    - [相关代码](#相关代码)
+    - [功能案例](#功能案例)
+      - [306型餐桌绘制要点](#306型餐桌绘制要点)
+      - [309型餐桌绘制要点](#309型餐桌绘制要点)
+      - [串带门板绘制要点](#串带门板绘制要点)
+    - [注意事项](#注意事项)
+  - [2. 部件制作功能](#2-部件制作功能)
+    - [主要逻辑](#主要逻辑-1)
+    - [相关代码](#相关代码-1)
+    - [功能案例](#功能案例-1)
+      - [抽屉框制作要点](#抽屉框制作要点)
+    - [注意事项](#注意事项-1)
+  - [交互体验建议](#交互体验建议)
 
 ---
 
-## 1. 编译与加载
+## 项目结构
+
+```
+y-furniture/
+│
+├── furniture.sln           # Visual Studio 解决方案文件
+├── README.md               # 项目说明文档
+│
+└───furniture/              # 主项目目录
+    │
+    ├── furniture.csproj        # C# 项目文件 (包含依赖项)
+    │
+    ├── Core/                   # 核心逻辑 (插件入口、Ribbon)
+    │   ├── Plugin.cs
+    │   └── RibbonController.cs
+    │
+    ├── Commands/               # 命令处理器
+    │   ├── ComponentsPaletteCommandHandler.cs
+    │   ├── DrawingsPaletteCommandHandler.cs
+    │   ├── DrawRectangleCommandHandler.cs
+    │   └── DrawBoxCommandHandler.cs
+    │
+    ├── Features/               # 核心功能 (绘图、建模)
+    │   ├── DrawerBox.cs
+    │   └── DrawingUtils.cs
+    │
+    └───UI/                     # 用户界面
+        │
+        ├── Forms/              # 参数输入对话框
+        │   ├── DoorInputForm.cs
+        │   └── Table309InputForm.cs
+        │
+        └───Palettes/           # Palette 控件
+            ├── ComponentsPaletteControl.cs
+            └── DrawingsPaletteControl.cs
+```
+
+## 环境与依赖
+
+- **AutoCAD**: 2018
+- **.NET Framework**: net47
+- **主要依赖**:
+  - `AutoCAD.NET` (accoremgd.dll, acdbmgd.dll, acmgd.dll)
+
+---
+
+## 编译与加载
 
 - 编译命令：
   ```
-  dotnet restore
-  dotnet build
+  
   ```
 - DLL 路径：`furniture\bin\Debug\net47\furniture.dll`
 - AutoCAD 加载方式（LISP 脚本）：
@@ -36,7 +88,7 @@
 
 ---
 
-## 2. 三轴加工功能
+## 1. 三轴加工功能
 
 ### 主要逻辑
 
@@ -45,15 +97,18 @@
 - 用户点击不同型号按钮，即可调用对应的绘图命令，自动绘制所选型号的图纸。
 - Palette 支持后续扩展，可灵活添加更多型号及其绘图逻辑。
 
-### 相关代码文件
+### 相关代码
 
-- `RibbonController.cs`：功能区及“三轴加工”面板、按钮的创建。
-- `DrawingsPaletteCommandHandler.cs`：Ribbon 按钮命令处理器，负责弹出 Palette。
-- `DrawingsPaletteControl.cs`：Palette UI 控件，负责显示型号按钮及处理点击事件。
-- `DrawingUtils.cs` 或新建命令类：具体型号的绘图命令实现。
+- `Core/RibbonController.cs`：功能区与按钮注册。
+- `Commands/DrawingsPaletteCommandHandler.cs`：Palette 命令处理。
+- `UI/Palettes/DrawingsPaletteControl.cs`：Palette UI 与型号按钮的事件处理。
+- `Features/DrawingUtils.cs`：主建模与绘图逻辑（如 `DrawTable306`、`DrawTable309`、`DrawDoorWithGroove` 方法及辅助函数）。
+- `UI/Forms/Table309InputForm.cs`：309型餐桌的参数输入对话框。
+- `UI/Forms/DoorInputForm.cs`：串带门板的参数输入对话框。
 
-### 306型餐桌绘制要点
+### 功能案例
 
+#### 306型餐桌绘制要点
 - 支持交互输入餐桌长度、宽度，输入框可用上下键切换。
 - 自动绘制四角为四分之一圆弧的标准圆角矩形，bulge 精确，顺序正确。
 - 四角各绘制独立四分之一圆弧，便于三轴加工。
@@ -62,8 +117,7 @@
 - 自动绘制 4 条水平方向直线，自动排列。
 - 所有图元均自动排列、镜像，确保与加工图纸一致。
 
-### 309型餐桌绘制要点
-
+#### 309型餐桌绘制要点
 - **参数化输入**：通过弹出的 `Table309InputForm` 对话框，用户可自定义餐桌的长度和宽度。
 - **主体绘制**：
   - 在原点(0,0,0)绘制一个由用户输入的长宽决定的标准矩形。
@@ -83,8 +137,7 @@
   - 根据餐桌长度条件计算X坐标的偏移。
   - 在图纸内部绘制4条水平直线，Y坐标从 `宽度/5` 开始，以 `宽度/5` 为间距向上阵列。
 
-### 串带门板绘制要点
-
+#### 串带门板绘制要点
 - **参数化输入**：通过弹出的 `DoorInputForm` 对话框，用户可自定义门板长度、宽度、串带边距、串带下边距和串带长度。对话框支持使用“上/下箭头”键切换焦点。
 - **主体绘制**：根据输入参数，首先在原点(0,0,0)绘制门板的矩形外框。
 - **串带阵列**：
@@ -103,57 +156,41 @@
 - Palette UI 支持多型号扩展，便于后续维护。
 - 可扩展尺寸标注、图层管理等功能。
 
-### 关键代码位置
-
-- `DrawingUtils.cs`：主建模与绘图逻辑（如 `DrawTable306`、`DrawTable309`、`DrawDoorWithGroove` 方法及辅助函数）。
-- `DrawingsPaletteControl.cs`：Palette UI 与型号按钮（如“串带门板绘制”、“309型餐桌绘制”按钮的事件处理）。
-- `Table309InputForm.cs`：309型餐桌的参数输入对话框。
-- `DoorInputForm.cs`：串带门板的参数输入对话框。
-- `DrawingsPaletteCommandHandler.cs`：Palette 命令处理。
-- `RibbonController.cs`：功能区与按钮注册。
-
 ---
 
-## 3. 抽屉左侧板自动建模
+## 2. 部件制作功能
 
-### 主要流程
+### 主要逻辑
 
-1. **参数输入**：长度（length）、高度（height）、板厚（thickness）、圆弧半径（radius，已固定为1）
-2. **轮廓绘制**：在 XY 平面创建多段线，包含下边、左右边直线，上边为外凸半圆弧（bulge = -1），高度需减去板厚/2
-3. **面域与拉伸**：由多段线生成面域，沿 Z 轴拉伸为 3D 实体，拉伸后绕 X 轴 +90° 旋转到 ZX 平面
-4. **清理**：拉伸后自动删除辅助多段线
+- 在功能区（Ribbon）新增“家具部件”面板，包含“部件制作”命令按钮。
+- 点击“部件制作”后，弹出常驻 Palette（停靠面板），面板上以按钮形式列出各种部件的子命令。
+- 用户点击不同部件按钮，即可调用对应的建模命令。
+- Palette 支持后续扩展，可灵活添加更多部件及其建模逻辑。
+
+### 相关代码
+
+- `Core/RibbonController.cs`：功能区与按钮注册。
+- `Commands/ComponentsPaletteCommandHandler.cs`：Palette 命令处理。
+- `UI/Palettes/ComponentsPaletteControl.cs`：Palette UI 与“抽屉框制作”按钮的事件处理。
+- `Features/DrawerBox.cs`：抽屉框的建模逻辑。
+
+### 功能案例
+
+#### 抽屉框制作要点
+- **参数输入**：通过命令行交互输入长度、高度和板厚。
+- **轮廓绘制**：在XY平面创建多段线，上边为外凸半圆弧。
+- **实体生成**：通过面域拉伸生成三维实体，并旋转至正确位置。
+- **自动清理**：建模后自动删除辅助的二维多段线。
 
 ### 注意事项
 
-- bulge 为 -1 时，生成的半圆弧为外凸，圆心在板外侧
-- 圆弧半径当前固定为 1，如需自定义可调整 bulge 算法
-- 板高需减去板厚/2，否则外凸圆弧会导致实际高度超出设计值
-- 所有操作均在世界坐标系下完成，无需 UCS 变换
-- 建模后应及时删除辅助多段线
-
-### 代码片段参考
-
-```csharp
-// 多段线轮廓
-pline.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0); // 左下
-pline.AddVertexAt(1, new Point2d(0, height), -1, 0, 0); // 上半圆弧
-pline.AddVertexAt(2, new Point2d(thickness, height), 0, 0, 0); // 右上
-pline.AddVertexAt(3, new Point2d(thickness, 0), 0, 0, 0); // 右下
-pline.Closed = true;
-
-// 拉伸后旋转到 ZX 平面
-solid.TransformBy(Matrix3d.Rotation(Math.PI/2, Vector3d.XAxis, Point3d.Origin));
-```
-
-### 建议
-
-- 创建其它带圆弧的板件时，可参考本流程，调整轮廓点和 bulge 参数
-- 若需不同半径或非半圆弧，可用 bulge 公式：`bulge = tan(弧度/4)`
-- 保持建模流程简洁，便于维护和复用
+- bulge 参数需精确，以确保圆弧正确。
+- 所有参数均可交互输入，便于不同尺寸扩展。
+- Palette UI 支持多型号扩展，便于后续维护。
 
 ---
 
-## 4. 交互体验建议
+## 交互体验建议
 
 - 所有参数输入对话框建议支持“上下箭头”键在输入框之间切换焦点，提升输入效率
   - 示例：在宽度、高度等输入框中，按上下键可循环切换焦点

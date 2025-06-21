@@ -1,7 +1,9 @@
 using System;
 using System.Windows.Forms;
+using yz.furniture.Features;
+using yz.furniture.UI.Forms;
 
-namespace furniture
+namespace yz.furniture.UI.Palettes
 {
     public class DrawingsPaletteControl : UserControl
     {

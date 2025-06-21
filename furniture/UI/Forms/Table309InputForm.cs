@@ -2,7 +2,7 @@ using System;
 using System.Windows.Forms;
 using System.Drawing;
 
-namespace furniture
+namespace yz.furniture.UI.Forms
 {
     public class Table309InputForm : Form
     {

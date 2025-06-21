@@ -6,7 +6,7 @@ using Autodesk.AutoCAD.EditorInput;
 using Autodesk.AutoCAD.Geometry;
 using Autodesk.AutoCAD.Runtime;
 
-namespace furniture
+namespace yz.furniture.Features
 {
     public static class DrawingUtils
     {

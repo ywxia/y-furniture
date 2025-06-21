@@ -2,8 +2,9 @@ using System;
 using System.Windows.Input;
 using Autodesk.AutoCAD.ApplicationServices;
 using Autodesk.AutoCAD.Windows;
+using yz.furniture.UI.Palettes;
 
-namespace furniture
+namespace yz.furniture.Commands
 {
     public class DrawingsPaletteCommandHandler : ICommand
     {
