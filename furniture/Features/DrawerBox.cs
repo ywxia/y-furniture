@@ -129,6 +129,9 @@ namespace yz.furniture.Features
                 pline.Dispose();
                 region.Dispose();
                 
+                // 记录实体ID，便于后续关联
+                this.EntityId = solid.ObjectId;
+
                 // 返回新实体的ID
                 return solid.ObjectId;
             }
@@ -188,6 +191,7 @@ namespace yz.furniture.Features
             finally
             {
                 rb.Dispose();
+                obj.Dispose();
             }
 
             return drawerBox;

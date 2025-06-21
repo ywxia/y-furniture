@@ -77,6 +77,9 @@ namespace yz.furniture.UI.Palettes
                             
                             DBObject objToUpdate = tr.GetObject(per.ObjectId, OpenMode.ForWrite);
 
+                            // 先清除旧的 XData，避免残留导致解析失败
+                            objToUpdate.XData = null;
+
                             var rb = new ResultBuffer(
                                 new TypedValue((int)DxfCode.ExtendedDataRegAppName, AppName),
                                 new TypedValue((int)DxfCode.ExtendedDataAsciiString, box.ComponentName ?? "未命名部件"),
