@@ -20,6 +20,7 @@ namespace furniture
             AddModelButton(layout, "型号C", OnModelCClick);
             AddModelButton(layout, "306型餐桌绘制", OnTable306Click);
             AddModelButton(layout, "串带门板绘制", OnDrawDoorWithGrooveClick);
+            AddModelButton(layout, "309型餐桌绘制", OnTable309Click);
 
             this.Controls.Add(layout);
         }
@@ -67,6 +68,17 @@ namespace furniture
                         form.GrooveBottom,
                         form.GrooveLength
                     );
+                }
+            }
+        }
+
+        private void OnTable309Click(object sender, EventArgs e)
+        {
+            using (var form = new Table309InputForm())
+            {
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    DrawingUtils.DrawTable309(form.TableLength, form.TableWidth);
                 }
             }
         }

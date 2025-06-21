@@ -508,6 +508,41 @@ namespace furniture
                     }
                     tr5.Commit();
                 }
+                // 添加加工参数文字
+                using (Transaction tr6 = db.TransactionManager.StartTransaction())
+                {
+                    BlockTable bt = tr6.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
+                    BlockTableRecord btr = tr6.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
+
+                    // 根据桌面宽度计算文字总高度
+                    double totalTextBlockHeight = width / 4.0;
+                    // 5行文字，行间距1.5倍，总高度约为 (4 * 1.5 + 1) * textHeight = 7 * textHeight
+                    double textHeight = totalTextBlockHeight / 7.0; 
+                    
+                    // 将文字放在图形下方，留出一定间隙
+                    Point3d textPosition = new Point3d(1, 1 - textHeight * 2, 0);
+
+                    string[] machiningParams = new string[]
+                    {
+                        "306型餐桌加工参数：",
+                        "1. 铣圆角：12.7mm直刀，深度28mm，4次。",
+                        "2. 圆孔：8mm直刀，深度22mm,3次。",
+                        "3. 卸力缝：竖向锯片，深度12mm，1次。",
+                        "4. 铣轮廓线：901型主轴刀，深度34mm，1次。"
+                    };
+
+                    for (int i = 0; i < machiningParams.Length; i++)
+                    {
+                        MText mText = new MText();
+                        mText.Contents = machiningParams[i];
+                        mText.Location = new Point3d(textPosition.X, textPosition.Y - (i * textHeight * 1.5), textPosition.Z);
+                        mText.TextHeight = textHeight;
+                        btr.AppendEntity(mText);
+                        tr6.AddNewlyCreatedDBObject(mText, true);
+                    }
+
+                    tr6.Commit();
+                }
             }
         }
         // 计算偏移点
@@ -653,6 +688,162 @@ namespace furniture
             pLine2.AddVertexAt(3, new Point2d(sideMargin + 0.05, grooveBottom + grooveLength), 0, 0, 0);
             btr.AppendEntity(pLine2);
             tr.AddNewlyCreatedDBObject(pLine2, true);
+        }
+
+        public static void DrawTable309(double length, double width)
+        {
+            Document doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
+            if (doc == null) return;
+            using (doc.LockDocument())
+            {
+                Database db = doc.Database;
+                Editor ed = doc.Editor;
+
+                using (Transaction tr = db.TransactionManager.StartTransaction())
+                {
+                    BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
+                    BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
+
+                    // 1. 绘制一个标准的矩形
+                    Polyline pl = new Polyline();
+                    pl.AddVertexAt(0, new Point2d(0, 0), 0, 0, 0);
+                    pl.AddVertexAt(1, new Point2d(length, 0), 0, 0, 0);
+                    pl.AddVertexAt(2, new Point2d(length, width), 0, 0, 0);
+                    pl.AddVertexAt(3, new Point2d(0, width), 0, 0, 0);
+                    pl.Closed = true;
+                    btr.AppendEntity(pl);
+                    tr.AddNewlyCreatedDBObject(pl, true);
+
+                    // 2. 在四角额外添加半径为20的圆角
+                    double r = 20.0;
+                    // 左下角
+                    AddQuarterArc(btr, new Point2d(r, r), r, Math.PI, 1.5 * Math.PI);
+                    // 右下角
+                    AddQuarterArc(btr, new Point2d(length - r, r), r, 1.5 * Math.PI, 2 * Math.PI);
+                    // 右上角
+                    AddQuarterArc(btr, new Point2d(length - r, width - r), r, 0, 0.5 * Math.PI);
+                    // 左上角
+                    AddQuarterArc(btr, new Point2d(r, width - r), r, 0.5 * Math.PI, Math.PI);
+
+                    // 3. 绘制六组同心圆并镜像
+                    double r1 = 11.5 / 2.0;
+                    double r2 = 14 / 2.0;
+                    double xOffset = (length > 2000) ? 50.0 : 0.0;
+
+                    Point3d[] baseCenters = new Point3d[]
+                    {
+                        new Point3d(144.6999 + xOffset, 152.1503, 0),
+                        new Point3d(177.7863 + xOffset, 89.3886, 0),
+                        new Point3d(294.3392 + xOffset, 188.3591, 0),
+                        new Point3d(234.0471 + xOffset, 232.4948, 0),
+                        new Point3d(352.0008 + xOffset, 331.2691, 0),
+                        new Point3d(282.2331 + xOffset, 343.3636, 0)
+                    };
+
+                    var allCenters = new System.Collections.Generic.List<Point3d>();
+                    
+                    // 镜像函数
+                    Point3d MirrorX(Point3d pt) => new Point3d(length - pt.X, pt.Y, 0);
+                    Point3d MirrorY(Point3d pt) => new Point3d(pt.X, width - pt.Y, 0);
+                    Point3d MirrorXY(Point3d pt) => new Point3d(length - pt.X, width - pt.Y, 0);
+
+                    foreach (var pt in baseCenters)
+                    {
+                        allCenters.Add(pt);          // 左下
+                        allCenters.Add(MirrorX(pt)); // 右下
+                        allCenters.Add(MirrorY(pt)); // 左上
+                        allCenters.Add(MirrorXY(pt));// 右上
+                    }
+
+                    foreach (var center in allCenters)
+                    {
+                        AddDoubleCircle(btr, center, r1, r2);
+                    }
+
+                    // 4. 添加新的一组图形并进行镜像
+                    double xOffsetNew = (length > 2000) ? 50.0 : 0.0;
+                    var newEntities = new System.Collections.Generic.List<Entity>();
+
+                    // 4.1 绘制矩形
+                    double rectWidth = 56;
+                    double rectHeight = 755;
+                    Point2d rectOrigin = new Point2d(390 + xOffsetNew, width / 2 - 377.5);
+                    Polyline newRect = new Polyline();
+                    newRect.AddVertexAt(0, rectOrigin, 0, 0, 0);
+                    newRect.AddVertexAt(1, new Point2d(rectOrigin.X + rectWidth, rectOrigin.Y), 0, 0, 0);
+                    newRect.AddVertexAt(2, new Point2d(rectOrigin.X + rectWidth, rectOrigin.Y + rectHeight), 0, 0, 0);
+                    newRect.AddVertexAt(3, new Point2d(rectOrigin.X, rectOrigin.Y + rectHeight), 0, 0, 0);
+                    newRect.Closed = true;
+                    btr.AppendEntity(newRect);
+                    tr.AddNewlyCreatedDBObject(newRect, true);
+                    newEntities.Add(newRect);
+
+                    // 4.2 绘制直线
+                    Point3d lineStart = new Point3d(418 + xOffsetNew, width / 2 - 372.75, 0);
+                    Point3d lineEnd = new Point3d(418 + xOffsetNew, width / 2 + 372.75, 0);
+                    Line newLine = new Line(lineStart, lineEnd);
+                    btr.AppendEntity(newLine);
+                    tr.AddNewlyCreatedDBObject(newLine, true);
+                    newEntities.Add(newLine);
+
+                    // 4.3 绘制同心圆阵列
+                    double circle_r1 = 9.5 / 2.0;
+                    double circle_r2 = 12 / 2.0;
+                    Point3d[] circleBaseCenters = new Point3d[]
+                    {
+                        new Point3d(400.5 + xOffsetNew, width / 2 - 360, 0),
+                        new Point3d(435.5 + xOffsetNew, width / 2 - 360, 0)
+                    };
+
+                    for (int i = 0; i < 5; i++)
+                    {
+                        double yRowOffset = i * 180;
+                        foreach (var baseCenter in circleBaseCenters)
+                        {
+                            Point3d currentCenter = new Point3d(baseCenter.X, baseCenter.Y + yRowOffset, 0);
+                            
+                            var c1 = new Circle(currentCenter, Vector3d.ZAxis, circle_r1);
+                            var c2 = new Circle(currentCenter, Vector3d.ZAxis, circle_r2);
+
+                            btr.AppendEntity(c1);
+                            tr.AddNewlyCreatedDBObject(c1, true);
+                            newEntities.Add(c1);
+
+                            btr.AppendEntity(c2);
+                            tr.AddNewlyCreatedDBObject(c2, true);
+                            newEntities.Add(c2);
+                        }
+                    }
+
+                    // 4.4 镜像所有新图形
+                    Matrix3d mirrorMatrix = Matrix3d.Mirroring(new Line3d(new Point3d(length / 2, 0, 0), new Point3d(length / 2, 1, 0)));
+                    foreach (var ent in newEntities)
+                    {
+                        var mirroredEnt = ent.GetTransformedCopy(mirrorMatrix) as Entity;
+                        btr.AppendEntity(mirroredEnt);
+                        tr.AddNewlyCreatedDBObject(mirroredEnt, true);
+                    }
+
+                    // 5. 绘制并阵列4条水平线
+                    double lineXOffset = (length > 2000) ? 50.0 : 0.0;
+                    double lineStartX = 487 + lineXOffset;
+                    double lineEndX = length - 487 - lineXOffset;
+                    double yGap = width / 5.0;
+
+                    for (int i = 1; i <= 4; i++)
+                    {
+                        double currentY = i * yGap;
+                        Point3d startPt = new Point3d(lineStartX, currentY, 0);
+                        Point3d endPt = new Point3d(lineEndX, currentY, 0);
+                        Line horizontalLine = new Line(startPt, endPt);
+                        btr.AppendEntity(horizontalLine);
+                        tr.AddNewlyCreatedDBObject(horizontalLine, true);
+                    }
+
+                    tr.Commit();
+                    ed.WriteMessage($"\n已完成 {length}x{width} 的309型餐桌的最终绘制。");
+                }
+            }
         }
     }
 }
