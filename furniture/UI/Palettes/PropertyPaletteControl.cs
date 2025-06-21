@@ -62,39 +62,9 @@ namespace yz.furniture.UI.Palettes
                     {
                         if (Autodesk.AutoCAD.ApplicationServices.Application.ShowModalDialog(form) == DialogResult.OK)
                         {
-                            // 最终修复：直接在此处构建和写入XData，不再调用任何外部方法
-                            const string AppName = "YZ_FURNITURE_DATA";
-                            Database db_local = doc.Database;
-
-                            RegAppTable rat = tr.GetObject(db_local.RegAppTableId, OpenMode.ForRead) as RegAppTable;
-                            if (!rat.Has(AppName))
-                            {
-                                rat.UpgradeOpen();
-                                var ratr = new RegAppTableRecord { Name = AppName };
-                                rat.Add(ratr);
-                                tr.AddNewlyCreatedDBObject(ratr, true);
-                            }
-                            
-                            DBObject objToUpdate = tr.GetObject(per.ObjectId, OpenMode.ForWrite);
-
-                            // 先清除旧的 XData，避免残留导致解析失败
-                            objToUpdate.XData = null;
-
-                            var rb = new ResultBuffer(
-                                new TypedValue((int)DxfCode.ExtendedDataRegAppName, AppName),
-                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, box.ComponentName ?? "未命名部件"),
-                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, box.Name ?? "未命名零件"),
-                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, box.Material ?? "默认材质"),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, box.Length),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, box.Height),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, box.Thickness),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, box.AllowanceX),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, box.AllowanceY),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, box.AllowanceZ)
-                            );
-
-                            objToUpdate.XData = rb;
-                            rb.Dispose();
+                            // 使用新的方法将box对象的数据写入实体
+                            // 这个方法会自动处理JSON序列化和XData的更新
+                            box.WriteDataToEntity(tr, per.ObjectId);
                             
                             ed.WriteMessage("\n属性已成功更新。");
                         }

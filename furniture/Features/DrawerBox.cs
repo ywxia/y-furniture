@@ -1,7 +1,10 @@
 using Autodesk.AutoCAD.DatabaseServices;
 using Autodesk.AutoCAD.Geometry;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace yz.furniture.Features
 {
@@ -31,7 +34,9 @@ namespace yz.furniture.Features
         // --- CAD数据库中的实体ID (Entity Reference) ---
         /// <summary>
         /// 存储此对象在AutoCAD数据库中对应的Solid3d实体的ID。
+        /// 这个ID是运行时的引用，不应被序列化。
         /// </summary>
+        [JsonIgnore]
         public ObjectId EntityId { get; private set; }
 
         /// <summary>
@@ -141,9 +146,68 @@ namespace yz.furniture.Features
         }
 
         private const string AppName = "YZ_FURNITURE_DATA";
+        private const int MaxXDataStringLength = 255;
 
         /// <summary>
-        /// 从一个给定的CAD实体中读取XData，并创建一个DrawerBox对象。
+        /// 将当前DrawerBox对象的数据序列化为JSON，并写入到指定实体的XData中。
+        /// 此方法会覆盖实体上原有的YZ_FURNITURE_DATA，但保留其他应用程序的XData。
+        /// </summary>
+        /// <param name="tr">活动的数据库事务</param>
+        /// <param name="entityId">要附加数据的实体的ID</param>
+        public void WriteDataToEntity(Transaction tr, ObjectId entityId)
+        {
+            // 确保AppName已在数据库中注册
+            Database db = entityId.Database;
+            RegAppTable rat = tr.GetObject(db.RegAppTableId, OpenMode.ForRead) as RegAppTable;
+            if (!rat.Has(AppName))
+            {
+                rat.UpgradeOpen();
+                var ratr = new RegAppTableRecord { Name = AppName };
+                rat.Add(ratr);
+                tr.AddNewlyCreatedDBObject(ratr, true);
+            }
+
+            DBObject obj = tr.GetObject(entityId, OpenMode.ForWrite);
+
+            // 序列化当前对象为JSON字符串
+            string jsonData = JsonConvert.SerializeObject(this);
+
+            // 创建一个新的XData列表
+            var newXData = new List<TypedValue>();
+
+            // 1. 添加我们的AppName和JSON数据
+            newXData.Add(new TypedValue((int)DxfCode.ExtendedDataRegAppName, AppName));
+            // 将JSON字符串分割成多个255字符的块进行存储
+            for (int i = 0; i < jsonData.Length; i += MaxXDataStringLength)
+            {
+                string chunk = jsonData.Substring(i, Math.Min(MaxXDataStringLength, jsonData.Length - i));
+                newXData.Add(new TypedValue((int)DxfCode.ExtendedDataAsciiString, chunk));
+            }
+
+            // 2. 保留其他应用程序的XData
+            ResultBuffer oldRb = obj.XData;
+            if (oldRb != null)
+            {
+                bool ourDataBlock = false;
+                foreach (TypedValue tv in oldRb)
+                {
+                    if (tv.TypeCode == (int)DxfCode.ExtendedDataRegAppName)
+                    {
+                        ourDataBlock = (tv.Value.ToString() == AppName);
+                    }
+                    if (!ourDataBlock)
+                    {
+                        newXData.Add(tv);
+                    }
+                }
+                oldRb.Dispose();
+            }
+
+            obj.XData = new ResultBuffer(newXData.ToArray());
+        }
+
+        /// <summary>
+        /// 从一个给定的CAD实体中读取JSON格式的XData，并创建一个DrawerBox对象。
         /// </summary>
         /// <param name="tr">活动的数据库事务</param>
         /// <param name="entityId">包含数据的实体的ID</param>
@@ -160,38 +224,46 @@ namespace yz.furniture.Features
             DrawerBox drawerBox = null;
             try
             {
-                TypedValue[] values = rb.AsArray();
-                // 统一格式要求必须有10个字段
-                if (values.Length < 10 || values[0].Value.ToString() != AppName)
+                var values = rb.AsArray();
+                bool foundApp = false;
+                var jsonBuilder = new StringBuilder();
+
+                for (int i = 0; i < values.Length; i++)
                 {
-                    return null;
+                    if (values[i].TypeCode == (int)DxfCode.ExtendedDataRegAppName)
+                    {
+                        if (values[i].Value.ToString() == AppName)
+                        {
+                            foundApp = true;
+                        }
+                        else
+                        {
+                            // 如果我们已经找到了自己的AppName，但又遇到了另一个AppName，说明我们的数据块结束了
+                            if (foundApp) break;
+                        }
+                    }
+                    else if (foundApp && values[i].TypeCode == (int)DxfCode.ExtendedDataAsciiString)
+                    {
+                        jsonBuilder.Append(values[i].Value.ToString());
+                    }
                 }
 
-                // 按顺序直接解析字段
-                string componentName = values[1].Value.ToString();
-                string name = values[2].Value.ToString();
-                string material = values[3].Value.ToString();
-                double length = Convert.ToDouble(values[4].Value);
-                double height = Convert.ToDouble(values[5].Value);
-                double thickness = Convert.ToDouble(values[6].Value);
-                double allowanceX = Convert.ToDouble(values[7].Value);
-                double allowanceY = Convert.ToDouble(values[8].Value);
-                double allowanceZ = Convert.ToDouble(values[9].Value);
-                
-                drawerBox = new DrawerBox(length, height, thickness, name, material, componentName);
-                drawerBox.AllowanceX = allowanceX;
-                drawerBox.AllowanceY = allowanceY;
-                drawerBox.AllowanceZ = allowanceZ;
-                drawerBox.AssociateWithEntity(entityId);
+                if (foundApp && jsonBuilder.Length > 0)
+                {
+                    drawerBox = JsonConvert.DeserializeObject<DrawerBox>(jsonBuilder.ToString());
+                    if (drawerBox != null)
+                    {
+                        drawerBox.AssociateWithEntity(entityId);
+                    }
+                }
             }
-            catch 
+            catch
             {
-                drawerBox = null;
+                drawerBox = null; // 解析失败
             }
             finally
             {
                 rb.Dispose();
-                obj.Dispose();
             }
 
             return drawerBox;

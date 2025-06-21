@@ -175,36 +175,8 @@ namespace yz.furniture.Features
                         // 4. 检查实体是否创建成功
                         if (!newId.IsNull)
                         {
-                            // 5. 直接、显式地在此处附加数据
-                            const string AppName = "YZ_FURNITURE_DATA";
-                            Database db_local = doc.Database;
-
-                            RegAppTable rat = tr.GetObject(db_local.RegAppTableId, OpenMode.ForRead) as RegAppTable;
-                            if (!rat.Has(AppName))
-                            {
-                                rat.UpgradeOpen();
-                                var ratr = new RegAppTableRecord { Name = AppName };
-                                rat.Add(ratr);
-                                tr.AddNewlyCreatedDBObject(ratr, true);
-                            }
-
-                            DBObject objToUpdate = tr.GetObject(newId, OpenMode.ForWrite);
-
-                            var rb = new ResultBuffer(
-                                new TypedValue((int)DxfCode.ExtendedDataRegAppName, AppName),
-                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, drawerBox.ComponentName ?? "未命名部件"),
-                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, drawerBox.Name ?? "未命名零件"),
-                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, drawerBox.Material ?? "默认材质"),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.Length),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.Height),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.Thickness),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.AllowanceX),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.AllowanceY),
-                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.AllowanceZ)
-                            );
-
-                            objToUpdate.XData = rb;
-                            rb.Dispose();
+                            // 5. 使用新的方法将数据附加到新创建的实体上
+                            drawerBox.WriteDataToEntity(tr, newId);
 
                             tr.Commit();
                             ed.WriteMessage($"\n成功创建抽屉侧板。ID: {newId}");
