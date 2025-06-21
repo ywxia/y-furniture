@@ -137,155 +137,89 @@ namespace yz.furniture.Features
             if (doc == null) return;
             Editor ed = doc.Editor;
 
+            // 确保在模型空间中操作
+            if (Convert.ToInt16(Autodesk.AutoCAD.ApplicationServices.Application.GetSystemVariable("TILEMODE")) == 0)
+            {
+                Autodesk.AutoCAD.ApplicationServices.Application.SetSystemVariable("TILEMODE", 1);
+            }
+
             using (doc.LockDocument())
             {
-                double width = 0;
-                double depth = 0;
-                double height = 0;
+                // 1. 获取用户输入
+                PromptDoubleResult lengthResult = ed.GetDouble("\n请输入长度 (length): ");
+                if (lengthResult.Status != PromptStatus.OK) return;
+                double length = lengthResult.Value;
 
-                using (var form = new Form())
-                {
-                    form.Text = "输入长方体参数";
-                    form.StartPosition = FormStartPosition.CenterScreen;
-                    form.Width = 420;
-                    form.Height = 240;
-                    form.FormBorderStyle = FormBorderStyle.FixedDialog;
-                    form.MaximizeBox = false;
-                    form.MinimizeBox = false;
+                PromptDoubleResult heightResult = ed.GetDouble("\n请输入高度 (height): ");
+                if (heightResult.Status != PromptStatus.OK) return;
+                double height = heightResult.Value;
 
-                    var widthLabel = new Label() { Left = 20, Top = 23, Text = "宽度(X):", AutoSize = true };
-                    var widthTextBox = new TextBox() { Left = 120, Top = 20, Width = 180, TabIndex = 0 };
-                    var widthMeasureBtn = new Button() { Text = "...", Left = 310, Top = 20, Width = 30, TabIndex = 1 };
-
-                    var depthLabel = new Label() { Left = 20, Top = 63, Text = "深度(Y):", AutoSize = true };
-                    var depthTextBox = new TextBox() { Left = 120, Top = 60, Width = 180, TabIndex = 2 };
-                    var depthMeasureBtn = new Button() { Text = "...", Left = 310, Top = 60, Width = 30, TabIndex = 3 };
-
-                    var heightLabel = new Label() { Left = 20, Top = 103, Text = "高度(Z):", AutoSize = true };
-                    var heightTextBox = new TextBox() { Left = 120, Top = 100, Width = 180, TabIndex = 4 };
-                    var heightMeasureBtn = new Button() { Text = "...", Left = 310, Top = 100, Width = 30, TabIndex = 5 };
-
-                    Action<TextBox> getDistAction = (textBox) => {
-                        form.Hide();
-                        PromptPointOptions ppo1 = new PromptPointOptions("\n请选择第一点:");
-                        ppo1.AllowNone = false;
-                        ppo1.Keywords.Clear();
-                        PromptPointResult ppr1 = ed.GetPoint(ppo1);
-                        if (ppr1.Status != PromptStatus.OK) { form.Show(); form.Activate(); return; }
-
-                        PromptPointOptions ppo2 = new PromptPointOptions("\n请选择第二点:");
-                        ppo2.AllowNone = false;
-                        ppo2.Keywords.Clear();
-                        ppo2.UseBasePoint = true;
-                        ppo2.BasePoint = ppr1.Value;
-                        PromptPointResult ppr2 = ed.GetPoint(ppo2);
-                        if (ppr2.Status != PromptStatus.OK) { form.Show(); form.Activate(); return; }
-                        
-                        textBox.Text = ppr1.Value.DistanceTo(ppr2.Value).ToString();
-                        form.Show();
-                        form.Activate();
-                    };
-
-                    widthMeasureBtn.Click += (s, e) => getDistAction(widthTextBox);
-                    depthMeasureBtn.Click += (s, e) => getDistAction(depthTextBox);
-                    heightMeasureBtn.Click += (s, e) => getDistAction(heightTextBox);
-
-                    KeyEventHandler textBox_KeyDown = (s, ev) => {
-                        var currentTextBox = s as TextBox;
-                        if (currentTextBox == null) return;
-
-                        if (ev.KeyCode == Keys.Down)
-                        {
-                            if (currentTextBox == widthTextBox) depthTextBox.Focus();
-                            else if (currentTextBox == depthTextBox) heightTextBox.Focus();
-                            else if (currentTextBox == heightTextBox) widthTextBox.Focus(); // Loop
-                            ev.Handled = true;
-                            ev.SuppressKeyPress = true;
-                        }
-                        else if (ev.KeyCode == Keys.Up)
-                        {
-                            if (currentTextBox == widthTextBox) heightTextBox.Focus(); // Loop
-                            else if (currentTextBox == depthTextBox) widthTextBox.Focus();
-                            else if (currentTextBox == heightTextBox) depthTextBox.Focus();
-                            ev.Handled = true;
-                            ev.SuppressKeyPress = true;
-                        }
-                    };
-
-                    widthTextBox.KeyDown += textBox_KeyDown;
-                    depthTextBox.KeyDown += textBox_KeyDown;
-                    heightTextBox.KeyDown += textBox_KeyDown;
-
-                    var okButton = new Button() { Text = "确定", Left = 200, Width = 80, Top = 160, TabIndex = 6 };
-                    okButton.Click += (sender, e) => {
-                        try
-                        {
-                            width = double.Parse(widthTextBox.Text);
-                            depth = double.Parse(depthTextBox.Text);
-                            height = double.Parse(heightTextBox.Text);
-                            form.DialogResult = DialogResult.OK;
-                            form.Close();
-                        }
-                        catch (System.Exception ex)
-                        {
-                            MessageBox.Show("请输入有效的数字。\n" + ex.Message);
-                            return;
-                        }
-                    };
-
-                    var cancelButton = new Button() { Text = "取消", Left = 290, Width = 80, Top = 160, TabIndex = 7 };
-                    cancelButton.Click += (sender, e) => {
-                        form.DialogResult = DialogResult.Cancel;
-                        form.Close();
-                    };
-                    
-                    form.Shown += (sender, e) => {
-                        widthTextBox.Focus();
-                    };
-
-                    form.Controls.Add(widthLabel);
-                    form.Controls.Add(widthTextBox);
-                    form.Controls.Add(widthMeasureBtn);
-                    form.Controls.Add(depthLabel);
-                    form.Controls.Add(depthTextBox);
-                    form.Controls.Add(depthMeasureBtn);
-                    form.Controls.Add(heightLabel);
-                    form.Controls.Add(heightTextBox);
-                    form.Controls.Add(heightMeasureBtn);
-                    form.Controls.Add(okButton);
-                    form.Controls.Add(cancelButton);
-                    form.AcceptButton = okButton;
-                    form.CancelButton = cancelButton;
-
-                    if (Autodesk.AutoCAD.ApplicationServices.Application.ShowModalDialog(form) != DialogResult.OK)
-                    {
-                        return;
-                    }
-                }
+                PromptDoubleResult thicknessResult = ed.GetDouble("\n请输入板厚 (thickness): ");
+                if (thicknessResult.Status != PromptStatus.OK) return;
+                double thickness = thicknessResult.Value;
 
                 Database db = doc.Database;
-
-                PromptPointOptions ppo = new PromptPointOptions("\n请选择长方体的插入点:");
-                ppo.AllowNone = false;
-                ppo.Keywords.Clear();
-                PromptPointResult ppr = ed.GetPoint(ppo);
-                if (ppr.Status != PromptStatus.OK) return;
-                Point3d insertionPoint = ppr.Value;
-
                 using (Transaction tr = db.TransactionManager.StartTransaction())
                 {
                     BlockTable bt = tr.GetObject(db.BlockTableId, OpenMode.ForRead) as BlockTable;
                     BlockTableRecord btr = tr.GetObject(bt[BlockTableRecord.ModelSpace], OpenMode.ForWrite) as BlockTableRecord;
 
-                    Solid3d box = new Solid3d();
-                    box.CreateBox(width, depth, height);
-                    box.TransformBy(Matrix3d.Displacement(insertionPoint - Point3d.Origin + new Vector3d(width / 2, depth / 2, height / 2)));
+                    try
+                    {
+                        // 2. 创建数据模型实例
+                        var drawerBox = new DrawerBox(length, height, thickness, "抽屉侧板", "默认材质", "抽屉");
+                        
+                        // 3. 根据数据模型创建实体，并获取返回的ID
+                        ObjectId newId = drawerBox.CreateEntity(tr, btr);
 
-                    btr.AppendEntity(box);
-                    tr.AddNewlyCreatedDBObject(box, true);
-                    tr.Commit();
+                        // 4. 检查实体是否创建成功
+                        if (!newId.IsNull)
+                        {
+                            // 5. 直接、显式地在此处附加数据
+                            const string AppName = "YZ_FURNITURE_DATA";
+                            Database db_local = doc.Database;
 
-                    ed.WriteMessage($"\n已在 ({Math.Round(insertionPoint.X, 2)}, {Math.Round(insertionPoint.Y, 2)}) 绘制 {width}x{depth}x{height} 的长方体。");
+                            RegAppTable rat = tr.GetObject(db_local.RegAppTableId, OpenMode.ForRead) as RegAppTable;
+                            if (!rat.Has(AppName))
+                            {
+                                rat.UpgradeOpen();
+                                var ratr = new RegAppTableRecord { Name = AppName };
+                                rat.Add(ratr);
+                                tr.AddNewlyCreatedDBObject(ratr, true);
+                            }
+
+                            DBObject objToUpdate = tr.GetObject(newId, OpenMode.ForWrite);
+
+                            var rb = new ResultBuffer(
+                                new TypedValue((int)DxfCode.ExtendedDataRegAppName, AppName),
+                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, drawerBox.ComponentName ?? "未命名部件"),
+                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, drawerBox.Name ?? "未命名零件"),
+                                new TypedValue((int)DxfCode.ExtendedDataAsciiString, drawerBox.Material ?? "默认材质"),
+                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.Length),
+                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.Height),
+                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.Thickness),
+                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.AllowanceX),
+                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.AllowanceY),
+                                new TypedValue((int)DxfCode.ExtendedDataReal, drawerBox.AllowanceZ)
+                            );
+
+                            objToUpdate.XData = rb;
+                            rb.Dispose();
+
+                            tr.Commit();
+                            ed.WriteMessage($"\n成功创建抽屉侧板。ID: {newId}");
+                        }
+                        else
+                        {
+                            tr.Abort();
+                            ed.WriteMessage("\n创建抽屉侧板失败。");
+                        }
+                    }
+                    catch (System.Exception ex)
+                    {
+                        ed.WriteMessage("\n创建失败: " + ex.Message);
+                        tr.Abort();
+                    }
                 }
             }
         }

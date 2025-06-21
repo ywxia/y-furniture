@@ -15,12 +15,13 @@ namespace yz.furniture.UI.Palettes
 
         private void btnDrawerBox_Click(object sender, EventArgs e)
         {
-            // 获取当前文档和编辑器
+            // 获取当前文档
             Document doc = Autodesk.AutoCAD.ApplicationServices.Application.DocumentManager.MdiActiveDocument;
-            Editor ed = doc.Editor;
+            if (doc == null) return;
 
-            // 执行抽屉框制作命令
-            DrawerBox.CreateDrawerBox();
+            // 发送命令到AutoCAD命令行执行
+            // 注意命令前的"_"是为了调用全局命令，末尾的" "是为了像手动输入回车一样执行命令
+            doc.SendStringToExecute("_DrawBox ", true, false, true);
         }
 
         #region Component Designer generated code

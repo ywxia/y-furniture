@@ -26,7 +26,8 @@ namespace yz.furniture.Core
 
             CreateGeneralPartsPanel(tab);
             CreateFurniturePartsPanel(tab);
-            CreateCNCPanel(tab); // 新增三轴加工面板
+            CreatePropertyPanel(tab); // 新增家具属性面板
+            CreateCNCPanel(tab); 
         }
 
         private static void CreateFurniturePartsPanel(RibbonTab tab)
@@ -86,6 +87,23 @@ namespace yz.furniture.Core
             button.ShowText = true;
             button.Text = "绘制图纸";
             button.CommandHandler = new DrawingsPaletteCommandHandler();
+            panelSource.Items.Add(button);
+        }
+
+        // 新增家具属性功能区和按钮
+        private static void CreatePropertyPanel(RibbonTab tab)
+        {
+            RibbonPanelSource panelSource = new RibbonPanelSource();
+            panelSource.Title = "家具属性";
+            RibbonPanel panel = new RibbonPanel();
+            panel.Source = panelSource;
+            tab.Panels.Add(panel);
+
+            RibbonButton button = new RibbonButton();
+            button.Name = "属性编辑";
+            button.ShowText = true;
+            button.Text = "属性编辑";
+            button.CommandHandler = new PropertyPaletteCommandHandler();
             panelSource.Items.Add(button);
         }
     }
